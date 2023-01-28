@@ -21,22 +21,23 @@ def ros_func():
     bag = rosbag.Bag('limelight_video.bag', 'w')
 
     rate = rospy.Rate(20)
-    # Put your code in the appropriate sections in this if statement/while loop
+    # Put your code in the appropriate sections in this if statement/while loop                                                                                  
     while not rospy.is_shutdown():
         ret, frame = cap.read()
         cv2.imwrite('limelight_last_img.jpg', frame)
+        all_pixels = np.array(frame).flatten()
 
-        stamp = roslib.rostime.Time.from_sec(time.time())
+        stamp = rospy.get_rostime()
         ros_img = Image()
         ros_img.header.stamp = stamp
         ros_img.width = frame.shape[0]
         ros_img.height = frame.shape[1]
         ros_img.encoding = "rgb8"
         ros_img.header.frame_id = "limelight"
-        ros_img.data = frame
+        ros_img.data = list(all_pixels)
 
-        bag.write(ros_img, stamp)
-
+        bag.write("/limelight_img", ros_img, stamp)
+   
         rate.sleep()
 
     bag.close()
