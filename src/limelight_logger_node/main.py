@@ -1,50 +1,42 @@
 #!/usr/bin/env python3
 
-import tf2_ros
 import rospy
 from threading import Thread
-from sensor_msgs.msg import Image
 
 import cv2
-import numpy as np
-import rosbag
+import numpy
 
-from frc_robot_utilities_py_node.frc_robot_utilities_py import *
-from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode
-
+from sensor_msgs.msg import Image
 
 def ros_func():
-    global hmi_updates
-    global robot_status
 
-    cap = cv2.VideoCapture('http://10.1.95.11:5800')
-    bag = rosbag.Bag('limelight_video.bag', 'w')
+    limelight_addresses = rospy.get_param("/hmi_agent_node/drive_fwd_back_axis_id", [])
+
+    limelight_capture = cv2.VideoCapture('http://10.1.95.11:5800')
+
+    limelight_image_publisher = rospy.Publisher(name="/LimelightImage", data_class=Image, queue_size=10, tcp_nodelay=True)
 
     rate = rospy.Rate(20)
-    # Put your code in the appropriate sections in this if statement/while loop                                                                                  
+
     while not rospy.is_shutdown():
-        ret, frame = cap.read()
-        cv2.imwrite('limelight_last_img.jpg', frame)
-        all_pixels = np.array(frame).flatten()
 
-        stamp = rospy.get_rostime()
-        ros_img = Image()
-        ros_img.header.stamp = stamp
-        ros_img.width = frame.shape[0]
-        ros_img.height = frame.shape[1]
-        ros_img.encoding = "rgb8"
-        ros_img.header.frame_id = "limelight"
-        ros_img.data = list(all_pixels)
+        return_code, frame = limelight_capture.read()
 
-        bag.write("/limelight_img", ros_img, stamp)
-   
+        image_message = Image()
+        image_message.header.stamp = rospy.get_rostime()
+        image_message.width = frame.shape[1]
+        image_message.height = frame.shape[0]
+        image_message.encoding = "rgb8"
+        image_message.header.frame_id = "limelight"
+        image_message.data = list(numpy.array(frame).flatten())
+
+        limelight_image_publisher.publish(image_message)
+
         rate.sleep()
 
-    bag.close()
 
 def ros_main(node_name):
     rospy.init_node(node_name)
-    register_for_robot_updates()
 
     t1 = Thread(target=ros_func)
     t1.start()
