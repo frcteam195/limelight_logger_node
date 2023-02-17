@@ -10,27 +10,48 @@ from sensor_msgs.msg import Image
 
 def ros_func():
 
-    limelight_addresses = rospy.get_param("/hmi_agent_node/drive_fwd_back_axis_id", [])
+    limelight_front_capture = cv2.VideoCapture('http://10.1.95.11:5800')
+    limelight_back_capture = cv2.VideoCapture('http://10.1.95.12:5800')
 
-    limelight_capture = cv2.VideoCapture('http://10.1.95.11:5800')
+    limelight_front_image_publisher = rospy.Publisher(name="/LimelightFrontImage", data_class=Image, queue_size=100)
+    limelight_back_image_publisher = rospy.Publisher(name="/LimelightBackImage", data_class=Image, queue_size=100)
 
-    limelight_image_publisher = rospy.Publisher(name="/LimelightImage", data_class=Image, queue_size=10, tcp_nodelay=True)
-
-    rate = rospy.Rate(20)
+    rate = rospy.Rate(50)
 
     while not rospy.is_shutdown():
 
-        return_code, frame = limelight_capture.read()
+        try:
+            return_code, frame = limelight_front_capture.read()
 
-        image_message = Image()
-        image_message.header.stamp = rospy.get_rostime()
-        image_message.width = frame.shape[1]
-        image_message.height = frame.shape[0]
-        image_message.encoding = "rgb8"
-        image_message.header.frame_id = "limelight"
-        image_message.data = list(numpy.array(frame).flatten())
+            if return_code:
+                image_message = Image()
+                image_message.header.stamp = 0
+                image_message.width = frame.shape[1]
+                image_message.height = frame.shape[0]
+                image_message.encoding = "rgb8"
+                image_message.header.frame_id = "limelight"
+                image_message.data = list(numpy.array(frame).flatten())
 
-        limelight_image_publisher.publish(image_message)
+                limelight_front_image_publisher.publish(image_message)
+        except:
+            pass
+
+        try:
+            return_code, frame = limelight_back_capture.read()
+
+            if return_code:
+
+                image_message = Image()
+                image_message.header.stamp = rospy.get_rostime()
+                image_message.width = frame.shape[1]
+                image_message.height = frame.shape[0]
+                image_message.encoding = "rgb8"
+                image_message.header.frame_id = "limelight"
+                image_message.data = list(numpy.array(frame).flatten())
+
+                limelight_back_image_publisher.publish(image_message)
+        except:
+            pass
 
         rate.sleep()
 
